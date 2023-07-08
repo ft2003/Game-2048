@@ -1,10 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include <time.h>
+#include <math.h>
+#include <stdbool.h>
 
 #define MAX_USERNAME_LENGTH 20
 #define MAX_PASSWORD_LENGTH 20
+
 
 struct User {
     char username[MAX_USERNAME_LENGTH];
@@ -17,11 +20,25 @@ struct User users[100];
 struct User currentuser;
 int scores[15];
 int num_users = 0;
-int sizeOfTable=0;
+int size=0;
 int login=0;
 int scoreboard=0;
 int guest=0;
 int exite=0;
+int start=0;
+int ExitGame=0;
+int won=0;
+void init_board(int board[][size], int size);
+void draw_board(int board[][size], int size, int score);
+void generate_random_tile(int board[][size], int size);
+int move_left(int board[][size], int size, int* score);
+int move_right(int board[][size], int size, int* score);
+int move_up(int board[][size], int size, int* score);
+int move_down(int board[][size], int size, int* score);
+int check_game_over(int board[][size], int size);
+void cheat(int i,int j,int val);
+int isPowerOfTwo(int n);
+
 
 void addscore(int score){
     int static count=0;
@@ -116,7 +133,11 @@ void takeCommand(char *token){
 
             token = strtok(NULL, " ");
         }
-        if(username_exists(new_user.username)){
+        if (strlen(new_user.username) == 0 || strlen(new_user.password) == 0) {
+        printf("Error: Username or password cannot be empty.\n");
+
+        }
+        else if(username_exists(new_user.username)){
             printf("username already exists!\n");
         } else{
             addUser(new_user);
@@ -133,7 +154,11 @@ void takeCommand(char *token){
 
             token = strtok(NULL, " ");
         }
-        if(!username_exists(new_user1.username)){
+        if (strlen(new_user1.username) == 0 || strlen(new_user1.password) == 0) {
+        printf("Error: Username or password cannot be empty.\n");
+
+        }
+        else if(!username_exists(new_user1.username)){
             printf("username not found!\n");
         } else if(!correct_password(new_user1.username,new_user1.password)){
             printf("password incorrect!\n");
@@ -149,18 +174,20 @@ void takeCommand(char *token){
         printf("welcome to my 2048 game!!!\n");
         guest=1;
     }else if(strcmp(token,"start")==0){
-        for (int i=0;i<2;i++){
-            if(i==1){
-                if(atoi(token)<3){
-                    printf("invalid size, size must be bigger than 2\n");
-                }else{
-                    strcpy(sizeOfTable,atoi(token));
-                    printf("size o the table has been saved\n");
-                }
+    for (int i = 0; i < 2; i++){
+        if(i == 1){
+            int tableSize = atoi(token);
+            if(tableSize < 3){
+                printf("invalid size, size must be bigger than 2\n");
+            }else{
+                size = tableSize;
+                printf("size of the table has been saved\n");
+                start=1;
             }
-            token = strtok(NULL, " ");
         }
-    }else if(strcmp(token,"scoreboard")==0){
+        token = strtok(NULL, " ");
+    }
+}else if(strcmp(token,"scoreboard")==0){
         printf("\nyou entered scoreboard menu!\n");
         showScoreboard;
         scoreboard=1;
@@ -178,6 +205,7 @@ void takeCommand(char *token){
     }else if(strcmp(token,"back")==0){
         if(scoreboard==1){
             printf("you are back to main menu!\n");
+            scoreboard=0;
         }
 
     }else if(strcmp(token,"exit")==0){
@@ -205,22 +233,94 @@ int main() {
     takeCommand(token);
     char *token1;
 
-    int a=0;
+
     while(exite!=1){
-        //if(command=="exit"){
-          //  break;
-        //}
         fgets(command,sizeof(command),stdin);
         token1= strtok(command, " ");
 
-
         takeCommand(token1);
+        if (start==1)
+        {
+            int board[size][size];
+            int score = 0;
+            char ch;
+            char nextln;
+            srand(time(0));
 
-        a++;
-    }
 
-    for(int i=0;i<num_users;i++){
-        printf("%s\n",users[i].password);
+            init_board(board, size);
+            generate_random_tile(board, size);
+            generate_random_tile(board, size);
+            draw_board(board, size, score);
+            while(1)
+            {
+                fgets(command,sizeof(command),stdin);
+                char *token2 = strtok(command, " ");
+                if(strcmp(token2,"exit")==0)
+                {
+                    start=0;
+                    printf("you ended the game!");
+                    break;
+
+                }if(strcmp(token2,"left")==0)
+                {
+                    score += move_left(board, size, &score);
+
+                }else if(strcmp(token2,"right")==0)
+                {
+                    score += move_right(board, size, &score);
+
+                }else if (strcmp(token2,"up")==0)
+                {
+                    score += move_up(board, size, &score);
+                }else if (strcmp(token2,"down")==0)
+                {
+                    score += move_down(board, size, &score);
+                }else if (strcmp(token2,"put")==0)
+                {
+                    int dirI,dirJ,value;
+                    for (int i = 0; i < 4; i++){
+                        if(i == 1)
+                        {
+                            dirI = atoi(token2);
+                        }else if(i==2)
+                        {
+                            dirJ = atoi(token2);
+                        }else if(i==3)
+                        {
+                            value = atoi(token2);
+                        }
+                        token2 = strtok(NULL, " ");
+                    }
+
+                    cheat(dirI,dirJ,value);
+                }else{
+                    printf("invalid command\n");
+                }
+                if (check_game_over(board, size)) {
+                    printf("\nyou lost!\n");
+                    break;
+                }
+                if (score == 1000)
+                {
+                    if(!won)
+                    {
+                        printf("\nyou won!");
+                        won=1;
+                    }
+
+
+                }
+
+                generate_random_tile(board, size);
+                draw_board(board, size, score);
+            }
+            if (!guest){
+                currentuser.score=score;
+                printf("your score is %d\n",currentuser.score);
+            }
+
+        }
     }
 
 
@@ -230,3 +330,203 @@ int main() {
 
 
 
+ void cheat(int i , int j , int val)
+ {
+    if(i>size || j > size)
+    {
+        printf("coordinate out of range!\n");
+    }else if(!isPowerOfTwo(val))
+    {
+        printf("invalid value!\n");
+    }else
+    {
+
+    }
+ }
+
+
+ int isPowerOfTwo(int n)
+{
+    if (n == 0)
+        return 0;
+    while (n != 1) {
+        if (n % 2 != 0)
+            return 0;
+        n = n / 2;
+    }
+    return 1;
+}
+
+
+void init_board(int board[][size], int size) {
+    int i, j;
+    for (i = 0; i < size; i++) {
+        for (j = 0; j < size; j++) {
+            board[i][j] = 0;
+        }
+    }
+}
+
+void draw_board(int board[][size], int size, int score) {
+    int i, j;
+    printf("2048 Game\n\n");
+    printf("Score: %d\n\n", score);
+    for (i = 0; i < size; i++) {
+        for (j = 0; j < size; j++) {
+            if (board[i][j] == 0) {
+                printf("     .");
+            }
+            else {
+                printf(" %5d", board[i][j]);
+            }
+        }
+        printf("\n\n");
+    }
+
+}
+
+
+void generate_random_tile(int board[][size], int size) {
+    int i, j, r;
+    do {
+        i = rand() % size;
+        j = rand() % size;
+    } while (board[i][j] != 0);
+    r = (rand() % 10 < 9) ? 2 : 4;
+    board[i][j] = r;
+}
+
+
+int move_left(int board[][size], int size, int* score) {
+    int i, j, k, flag = 0;
+    for (i = 0; i < size; i++) {
+        k = 0;
+        for (j = 0; j < size; j++) {
+            if (board[i][j] != 0) {
+                if (k != j) {
+
+                    board[i][k] = board[i][j];
+                    board[i][j] = 0;
+                    flag = 1;
+                }
+                if (k > 0 && board[i][k] == board[i][k-1]) {
+
+                    board[i][k-1] *= 2;
+                    *score += board[i][k-1];
+                    board[i][k] = 0;
+                    k--;
+                    flag = 1;
+                }
+                k++;
+            }
+        }
+    }
+    return flag;
+}
+
+int move_right(int board[][size], int size, int* score) {
+    int i, j, k, flag = 0;
+    for (i = 0; i < size; i++) {
+        k = size - 1;
+        for (j = size - 1; j >= 0; j--) {
+            if (board[i][j] != 0) {
+                if (k != j) {
+
+                    board[i][k] = board[i][j];
+                    board[i][j] = 0;
+                    flag = 1;
+                }
+                if (k < size - 1 && board[i][k] == board[i][k+1]) {
+
+                    board[i][k+1] *= 2;
+                    *score += board[i][k+1];
+                    board[i][k] = 0;
+                    k++;
+                    flag = 1;
+                }
+                k--;
+            }
+        }
+    }
+    return flag;
+}
+
+
+int move_up(int board[][size], int size, int* score) {
+    int i, j, k, flag = 0;
+    for (j = 0; j < size; j++) {
+        k = 0;
+        for (i = 0; i < size; i++) {
+            if (board[i][j] != 0) {
+                if (k != i) {
+
+                    board[k][j] = board[i][j];
+                    board[i][j] = 0;
+                    flag = 1;
+                }
+                if (k > 0 && board[k][j] == board[k-1][j]) {
+
+                    board[k-1][j] *= 2;
+                    *score += board[k-1][j];
+                    board[k][j] = 0;
+                    k--;
+                    flag = 1;
+                }
+                k++;
+            }
+        }
+    }
+    return flag;
+}
+
+int move_down(int board[][size], int size, int* score) {
+    int i, j, k, flag = 0;
+    for (j = 0; j < size; j++) {
+        k = size - 1;
+        for (i = size - 1; i >= 0; i--) {
+            if (board[i][j] != 0) {
+                if (k != i) {
+
+                    board[k][j] = board[i][j];
+                    board[i][j] = 0;
+                    flag = 1;
+                }
+                if (k < size - 1 && board[k][j] == board[k+1][j]) {
+
+                    board[k+1][j] *= 2;
+                    *score += board[k+1][j];
+                    board[k][j] = 0;
+                    k++;
+                    flag = 1;
+                }
+                k--;
+            }
+        }
+    }
+    return flag;
+}
+
+
+int check_game_over(int board[][size], int size) {
+    int i, j, flag = 1;
+    for (i = 0; i < size; i++) {
+        for (j = 0; j < size; j++) {
+            if (board[i][j] == 0) {
+                flag = 0;
+                break;
+            }
+            if (i > 0 && board[i][j] == board[i-1][j]) {
+                flag = 0;
+                break;
+            }
+            if (j > 0 && board[i][j] == board[i][j-1]) {
+                flag = 0;
+                break;
+            }
+        }
+        if (!flag) {
+            break;
+        }
+    }
+    return flag;
+}
